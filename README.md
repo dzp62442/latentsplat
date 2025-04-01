@@ -99,7 +99,7 @@ We've included the scripts that generate tables and figures in the paper. Note t
     <pre><code>@inproceedings{wewer24latentsplat,
     title     = {latentSplat: Autoencoding Variational Gaussians for Fast Generalizable 3D Reconstruction},
     author    = {Wewer, Christopher and Raj, Kevin and Ilg, Eddy and Schiele, Bernt and Lenssen, Jan Eric},
-    booktitle = {arXiv},
+    booktitle = {European Conference on Computer Vision ({ECCV})},
     year      = {2024},
 }</code></pre>
   </div>
