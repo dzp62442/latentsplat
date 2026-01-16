@@ -7,7 +7,9 @@ from typing import Any, Dict, Iterable, Iterator, Literal, Optional, Protocol, r
 from warnings import warn
 
 import moviepy.editor as mpy
+import numpy as np
 import torch
+import torch.nn.functional as F
 import wandb
 from einops import pack, rearrange, repeat
 from jaxtyping import Float
@@ -106,6 +108,7 @@ class OptimizerCfg:
 @dataclass
 class TestCfg:
     output_path: Path
+    save_depth: bool = False
 
 
 @dataclass
@@ -113,6 +116,7 @@ class TrainCfg:
     depth_mode: DepthRenderingMode | None
     extended_visualization: bool
     step_offset: int
+    use_dynamic_mask: bool = False
     video_interpolation: bool = False
     video_wobble: bool = False
 
@@ -324,6 +328,16 @@ class ModelWrapper(LightningModule):
         )
         target_combined_pred = Prediction()
         target_combined_gt = GroundTruth(batch["target"]["image"], near=batch["target"]["near"], far=batch["target"]["far"])
+
+        if self.train_cfg.use_dynamic_mask and "masks" in batch["target"]:
+            dynamic_mask = ~batch["target"]["masks"].bool()
+            target_autoencoder_gt.mask = dynamic_mask
+            target_combined_gt.mask = dynamic_mask
+            if target_render_image_gt.image is not None:
+                b, v, h, w = dynamic_mask.shape
+                mask = dynamic_mask.float().unsqueeze(2).view(-1, 1, h, w)
+                resized = F.interpolate(mask, size=size, mode="nearest")
+                target_render_image_gt.mask = resized.view(b, v, size[0], size[1]).bool()
 
         # Run the model.
         # First generator pass
@@ -566,6 +580,11 @@ class ModelWrapper(LightningModule):
         path = self.test_cfg.output_path / name
         for index, color in zip(batch["target"]["index"][0], target_pred_image[0]):
             save_image(color, path / scene / context_index_str / f"color/{index:0>6}.png")
+        if self.test_cfg.save_depth and output.depth is not None:
+            depth_dir = path / scene / context_index_str / "depth"
+            depth_dir.mkdir(parents=True, exist_ok=True)
+            for index, depth in zip(batch["target"]["index"][0], output.depth[0]):
+                np.save(depth_dir / f"{index:0>6}.npy", depth.detach().cpu().numpy())
 
     def on_test_end(self) -> None:
         name = get_cfg()["wandb"]["name"]

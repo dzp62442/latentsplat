@@ -20,4 +20,8 @@ class LossL1(Loss):
         gt: GroundTruth
     ) -> Float[Tensor, ""]:
         delta = prediction.image - gt.image
+        mask = gt.mask
+        if mask is not None and mask.max() > 0.5 and mask.min() < 0.5:
+            mask = mask.bool().unsqueeze(2).expand_as(delta)
+            delta = delta[~mask]
         return delta.abs().mean()

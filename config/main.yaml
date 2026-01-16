@@ -97,14 +97,18 @@ train:
   depth_mode: null
   extended_visualization: false
   step_offset: 0
+  use_dynamic_mask: false
   video_interpolation: false
   video_wobble: false
 
 test:
   output_path: outputs/test
+  save_depth: false
 
 seed: 111123
 
 trainer:
   max_steps: 200_001
   val_check_interval: 250
+
+output_dir: null

@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import torch
+import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 from tabulate import tabulate
 
@@ -9,7 +11,7 @@ from ..misc.image_io import load_image, save_image
 from ..visualization.annotation import add_label
 from ..visualization.layout import add_border, hcat
 from .evaluation_cfg import EvaluationCfg
-from .metrics import compute_dists, compute_lpips, compute_psnr, compute_ssim
+from .metrics import compute_dists, compute_lpips, compute_pcc, compute_psnr, compute_ssim
 
 
 class MetricComputer(LightningModule):
@@ -20,7 +22,7 @@ class MetricComputer(LightningModule):
         self.cfg = cfg
 
     def on_test_epoch_start(self) -> None:
-        self.scores = dict(dists={}, lpips={}, ssim={}, psnr={})
+        self.scores = dict(dists={}, lpips={}, ssim={}, psnr={}, pcc={})
 
     def test_step(self, batch, batch_idx):
         scene = batch["scene"][0]
@@ -49,6 +51,22 @@ class MetricComputer(LightningModule):
             print(f'Skipping "{scene}".')
             return
 
+        rel_depth = batch["target"].get("rel_depth")
+        all_depths = {}
+        if rel_depth is not None:
+            rel_depth = rel_depth[0].to(self.device)
+            for method in self.cfg.methods:
+                try:
+                    depths = [
+                        np.load(method.path / scene / context_index_str / f"depth/{index.item():0>6}.npy")
+                        for index in batch["target"]["index"][0]
+                    ]
+                except FileNotFoundError:
+                    continue
+                all_depths[method.key] = (
+                    torch.from_numpy(np.stack(depths)).float().to(self.device)
+                )
+
         # Compute metrics.
         all_metrics = {}
         rgb_gt = batch["target"]["image"][0]
@@ -71,6 +89,23 @@ class MetricComputer(LightningModule):
                 f"ssim_{key}": ssim,
                 f"psnr_{key}": psnr,
             }
+            if key in all_depths and rel_depth is not None:
+                pred_depth = all_depths[key]
+                if pred_depth.shape[-2:] != rel_depth.shape[-2:]:
+                    pred_depth = F.interpolate(
+                        pred_depth.unsqueeze(1),
+                        size=rel_depth.shape[-2:],
+                        mode="bilinear",
+                        align_corners=False,
+                    ).squeeze(1)
+                pcc = compute_pcc(rel_depth, pred_depth)
+                if scene not in self.scores["pcc"]:
+                    self.scores["pcc"][scene] = {}
+                self.scores["pcc"][scene][key] = pcc.item()
+                all_metrics = {
+                    **all_metrics,
+                    f"pcc_{key}": pcc,
+                }
         self.log_dict(all_metrics)
         self.print_preview_metrics(all_metrics)
 
@@ -120,13 +155,22 @@ class MetricComputer(LightningModule):
             }
             self.running_metric_steps += 1
 
+        metrics = ["psnr", "lpips", "dists", "ssim"]
+        if all(
+            f"pcc_{method.key}" in self.running_metrics for method in self.cfg.methods
+        ):
+            metrics.append("pcc")
+
         table = []
         for method in self.cfg.methods:
             row = [
                 f"{self.running_metrics[f'{metric}_{method.key}']:.3f}"
-                for metric in ("psnr", "lpips", "dists", "ssim")
+                for metric in metrics
             ]
             table.append((method.key, *row))
 
-        table = tabulate(table, ["Method", "PSNR (dB)", "LPIPS", "DISTS", "SSIM"])
+        headers = ["Method", "PSNR (dB)", "LPIPS", "DISTS", "SSIM"]
+        if "pcc" in metrics:
+            headers.append("PCC")
+        table = tabulate(table, headers)
         print(table)

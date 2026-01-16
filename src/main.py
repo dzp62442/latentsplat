@@ -45,9 +45,13 @@ def train(cfg_dict: DictConfig):
     torch.manual_seed(cfg_dict.seed)
 
     # Set up the output directory.
-    output_dir = Path(
-        hydra.core.hydra_config.HydraConfig.get()["runtime"]["output_dir"]
-    )
+    if cfg_dict.output_dir is None:
+        output_dir = Path(
+            hydra.core.hydra_config.HydraConfig.get()["runtime"]["output_dir"]
+        )
+    else:  # for resuming
+        output_dir = Path(cfg_dict.output_dir)
+        os.makedirs(output_dir, exist_ok=True)
     print(cyan(f"Saving outputs to {output_dir}."))
     latest_run = output_dir.parents[1] / "latest-run"
     os.system(f"rm {latest_run}")

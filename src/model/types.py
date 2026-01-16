@@ -54,6 +54,7 @@ class GroundTruth:
     image: Float[Tensor, "batch view channels height width"] | None = None
     near: Float[Tensor, "batch view"] | None = None
     far: Float[Tensor, "batch view"] | None = None
+    mask: Float[Tensor, "batch view height width"] | None = None
 
 
 VariationalMode = Literal["none", "gaussians", "latents"]

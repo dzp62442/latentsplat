@@ -1,3 +1,32 @@
+在 OmniScene 数据集上与 SVF-GS 进行对比
+
+### 训练
+
+```bash
+python -m src.main +experiment=omniscene_112x200 \
+output_dir=checkpoints/omniscene-112x200-latentsplat
+```
+
+### 测试
+
+- 先渲染结果
+
+```bash
+python -m src.main +experiment=omniscene_112x200 \
+mode=test \
+checkpointing.load=todo \
+test.compute_scores=true 
+```
+
+- 再计算指标
+
+```bash
+python -m src.scripts.compute_metrics +evaluation=omniscene_112x200 \
+output_metrics_path=outputs/omniscene-112x200-latentsplat/evaluation_metrics.json
+```
+
+---
+
 # latentSplat [ECCV 2024]
 
 [![arXiv](https://img.shields.io/badge/arXiv-2403.16292-b31b1b.svg)](https://arxiv.org/abs/2403.16292)

@@ -54,7 +54,16 @@ class LossLpips(Loss):
         prediction: Prediction,
         gt: GroundTruth
     ) -> Float[Tensor, ""]:
+        pred = prediction.image
+        target = gt.image
+        mask = gt.mask
+        if mask is not None and mask.max() > 0.5:
+            mask = mask.bool().unsqueeze(2).expand_as(pred)
+            pred = pred.clone()
+            target = target.clone()
+            pred[mask] = 0
+            target[mask] = 0
         return self.lpips(
-            rearrange(prediction.image, "b v c h w -> (b v) c h w"),
-            rearrange(gt.image, "b v c h w -> (b v) c h w")
+            rearrange(pred, "b v c h w -> (b v) c h w"),
+            rearrange(target, "b v c h w -> (b v) c h w")
         )
