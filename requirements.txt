@@ -31,4 +31,4 @@ timm==0.9.12
 tqdm==4.66.1
 transformers==4.37.2
 wandb==0.16.2
-git+https://github.com/Chrixtar/latent-gaussian-rasterization
+# git+https://github.com/Chrixtar/latent-gaussian-rasterization

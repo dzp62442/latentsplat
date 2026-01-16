@@ -11,16 +11,11 @@ Check out the [project website here](https://geometric-rl.mpi-inf.mpg.de/latents
 To get started, create a conda environment:
 
 ```bash
-conda env create -f environment.yml
+conda create -n latentsplat python=3.10.13
 conda activate latentsplat
-```
-
-or a virtual environment using Python 3.10+:
-
-```bash
-python3.10 -m venv latentsplat
-source latentsplat/bin/activate
+pip install numpy==1.26.3 torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
+TORCH_CUDA_ARCH_LIST="8.9+PTX" pip install git+https://github.com/Chrixtar/latent-gaussian-rasterization
 ```
 
 Please not that for training you need to download the pre-trained checkpoints of the VAE-GAN from LDM as explained in section [Acquiring Pre-trained Checkpoints](#acquiring-pre-trained-checkpoints).

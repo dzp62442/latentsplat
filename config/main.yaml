@@ -38,8 +38,7 @@ hydra:
 
 wandb:
   project: latentsplat
-  entity: placeholder
-  name: placeholder
+  entity: dzp62442-DROPS
   mode: online
   activated: true
 
